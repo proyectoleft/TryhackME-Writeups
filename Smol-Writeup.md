@@ -110,6 +110,7 @@ the parameter cmd was identified. We then return to the page and modify the URL 
 
 <img width="867" height="214" alt="image" src="https://github.com/user-attachments/assets/eaf751a3-d2a7-4ec0-8392-082bc5c442a5" />
 
+# Reverse shell
 We verify that the command is executed on the page.
 With this finding, we will perform a reverse shell. First, we add an IP on the tunnel we are using:
 ```bash
