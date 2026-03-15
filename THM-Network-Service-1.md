@@ -24,5 +24,5 @@ A full port scan was conducted to identify open services:
 nmap -n -Pn -sV -sC -p- --min-rate 3000 10.66.181.13
 ```
 
-
+![alt text](image.png)
 
